@@ -1,4 +1,4 @@
-# $Id: Compact.pm,v 1.1.1.1 2004/09/23 02:34:31 andrew Exp $
+# $Id: Compact.pm,v 1.2 2004/09/24 06:18:39 andrew Exp $
 # Copyright (c) 2004 Andrew Stewart Williams. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -8,11 +8,10 @@ use strict;
 use Getopt::Long;
 use Carp;
 use vars qw($VERSION %DEFAULT_CONFIG);
-use 5.004;
 
 BEGIN {
     %DEFAULT_CONFIG = (no_auto_abbrev => 1, bundling => 1);
-    $VERSION = '0.01';
+    $VERSION = '0.02';
 }
 
 =head1 NAME
@@ -282,13 +281,6 @@ sub new {
 	$self->{cmd} =~ s|^.*/||;
     }
 
-    # struct sanity checking
-    for(my $i = 1; $i <= @$struct; $i++) {
-	my $s = $struct->[$i-1];
-	croak "option #$i: malformed option string"
-	    unless @{$s->[0]} == 2;
-    }
-
     # add mode options
     if($self->{modes}) {
 	my @modeopt;
@@ -303,22 +295,26 @@ sub new {
     unshift @$struct, [[qw(h help)], qq(this help message)]
 	if $self->{usage} && !grep $_->[0]->[1] eq 'help', @$struct;
 
-    $self->{opthash} = {
-	map {
-	    join('|', @{$_->[0]}).($_->[2] || "") => 
-		$_->[3] ? $_->[3] : \$opt{$_->[0]->[1]} 
-	} @$struct
-    };
+    my $opthash = {};
     $self->{opt} = \%opt;
+    for my $s (@$struct) {
+	my($m, $descr, $spec, $ref) = @$s;
+	my $o = join('|', @$m).($spec || '');
+	warn "option '$m->[1]' 4th parameter should be a reference\n"
+	    if $ref && !ref $ref;
+	$opt{$m->[1]} = undef;  # initialise destination
+	$opthash->{$o} = ref $ref ? $ref : \$opt{$m->[1]};
+    }
 
     # configure getopt option preferences
     my $config = $self->{configure} || {};
     $config->{$_} = $DEFAULT_CONFIG{$_} for 
 	grep !exists $config->{$_}, keys %DEFAULT_CONFIG;
-    Getopt::Long::Configure(grep $config->{$_}, keys %$config);
+    my @gconf = grep $config->{$_}, keys %$config;
+    Getopt::Long::Configure(@gconf) if @gconf;
 
     # parse options
-    $self->{ret} = GetOptions(%{$self->{opthash}});
+    $self->{ret} = GetOptions(%$opthash);
 
     return $self;
 }

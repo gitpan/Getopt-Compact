@@ -2,3 +2,7 @@ Revision history for Perl extension Getopt::Compact.
 
 0.01  Thu Sep 23 12:38:56 2004
 	- original version
+
+0.02  Fri Sep 24 15:49:00 2004
+	- initialising the hashref used to store option values internally.
+          this fixes a bug where the options weren't being stored sometimes.
