@@ -1,0 +1,15 @@
+Getopt::Compact test script v1
+usage: compact.t [options] 
+options                                            
+-h, --help               This help message         
+-v, --verbose            Verbose mode              
+-n, --test               Test mode                 
+-d, --debug              Debug mode                
+-w, --wibble             Specify a wibble parameter
+-f, --foobar             Apply foobar algorithm    
+-j, --joobies            Jooby integer list        
+    --baz                Baz option                
+-z, --zany, --zanzibar   Z option                  
+-x, -y                   The x or y option         
+    --man                Display documentation     
+

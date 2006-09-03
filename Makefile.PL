@@ -1,11 +1,18 @@
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile(
-    'NAME'		=> 'Getopt::Compact',
-    'VERSION_FROM'	=> 'lib/Getopt/Compact.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM => 'lib/Getopt/Compact.pm', # retrieve abstract from module
-       AUTHOR     => 'Andrew Williams <andrew.s.williams@adelaide.edu.au>') : ()),
+
+WriteMakefile
+    ('NAME'		=> 'Getopt::Compact',
+     'VERSION_FROM'	=> 'lib/Getopt/Compact.pm',
+     'PREREQ_PM'	=> {
+                        Carp => 0,
+                        Getopt::Long => 0,
+                        Text::Table => 0,
+			File::Spec => 0,
+			File::Basename => 0,
+			Pod::Parser => 0,
+			Pod::Simple::Text::Termcap => 0,
+			Env::Path => 0,
+                       },
+     ABSTRACT_FROM => 'lib/Getopt/Compact.pm',
+     AUTHOR     => 'Andrew Stewart Williams',
 );
