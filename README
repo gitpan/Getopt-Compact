@@ -4,9 +4,7 @@ Getopt::Compact.pm version 0.03
 This is yet another Getopt related module.  Getopt::Compact is geared
 towards compactly and yet quite powerfully describing an option
 syntax.  Options can be parsed, returned as a hashref of values,
-and/or displayed as a usage string.  Options can be retrieved in a
-single statement by instantiating a Getopt::Compact object and calling
-the opts() method (see SYNOPSIS).
+and/or displayed as a usage string.  
 
 INSTALLATION
 

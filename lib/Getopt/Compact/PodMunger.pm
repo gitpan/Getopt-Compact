@@ -1,4 +1,4 @@
-# $Id: PodMunger.pm 5 2006-09-03 17:13:33Z andrew $
+# $Id: PodMunger.pm 15 2006-09-04 20:00:01Z andrew $
 # Copyright (c) 2006 Andrew Stewart Williams. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -9,7 +9,7 @@ use Pod::Parser;
 use base qw/Pod::Parser/;
 use vars qw/$VERSION/;
 
-$VERSION = 0.01;
+$VERSION = "0.04";
 
 # section ordering.
 use constant SECTION_ORDER =>
@@ -180,7 +180,7 @@ Prints the parsed POD as a manpage, using Pod::Simple::Text::Termcap.
 
 =head1 VERSION
 
-$Revision: 5 $
+$Revision: 15 $
 
 =head1 AUTHOR
 

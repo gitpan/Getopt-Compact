@@ -1,4 +1,4 @@
-# $Id: Compact.pm 4 2006-09-03 17:12:58Z andrew $
+# $Id: Compact.pm 15 2006-09-04 20:00:01Z andrew $
 # Copyright (c) 2004-2006 Andrew Stewart Williams. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -14,7 +14,7 @@ use constant CONSTRUCTOR_OPTIONS =>
     (qw/struct usage name version author cmd args configure modes/);
 use constant DEFAULT_CONFIG => (no_auto_abbrev => 1, bundling => 1);
 
-$VERSION = 0.03;
+$VERSION = "0.04";
 
 sub new {
     my($class, %args) = @_;
@@ -36,7 +36,7 @@ sub new {
     }
 
     # more version munging
-    my $v = $self->{version} || '1.0';
+    my $v = $self->{version} || $main::VERSION || '1.0';
     $v = $1 if $v =~ /\$?Revision:?\s*([\d\.]+)/;
     $self->{version} = $v;
 
@@ -66,9 +66,9 @@ sub new {
     for my $s (@$struct) {
         my($m, $descr, $spec, $ref) = @$s;
 	my @onames = $self->_option_names($m);
+	my($longname) = grep length($_) > 1, @onames;  # first long name
         my $o = join('|', @onames).($spec || '');
-	my $dest = $#onames == 0 || length($onames[1]) == 1 ?
-	    $onames[0] : $onames[1];
+	my $dest = $longname ? $longname : $onames[0];
         $opt{$dest} = undef;  # initialise destination
         $opthash->{$o} = ref $ref ? $ref : \$opt{$dest};
     }
@@ -158,7 +158,12 @@ sub version { $VERSION }
 
 sub _option_names {
     my($self, $m) = @_;
-    return sort { length($a) <=> length($b) } (ref $m eq 'ARRAY' ? @$m : $m);
+    return sort _opt_sort (ref $m eq 'ARRAY' ? @$m : $m);
+}
+sub _opt_sort {
+    my($la, $lb) = map length($_), $a, $b;
+    return $la <=> $lb if $la < 2 or $lb < 2;
+    return 0;
 }
 
 sub _has_option {
@@ -194,42 +199,50 @@ inside foobar.pl:
 
     use Getopt::Compact;
 
-    my $opt = new Getopt::Compact
-        (name => 'foobar program', version => '1.0',
-         modes => [qw(verbose test debug)],
+    # (1) simple usage:
+    my $opts = new Getopt::Compact
+        (struct =>
+         [[[qw(b baz)], qq(baz option)],  # -b or --baz
+          ["foobar", qq(foobar option)],  # --foobar only
+         ])->opts();
+
+    # (2) or, a more advanced usage:
+    my $go = new Getopt::Compact
+        (name => 'foobar program', modes => [qw(verbose test debug)],
          struct =>
          [[[qw(w wibble)], qq(specify a wibble parameter), ':s'],
           [[qw(f foobar)], qq(apply foobar algorithm)],
           [[qw(j joobies)], qq(jooby integer list), '=i', \@joobs],
          ]
-        )->opts;
+        );
+    my $opts = $go->opts;
 
     print "applying foobar algorithm\n" if $opt->{foobar};
     print "joobs: @joobs\n" if @joobs;
+    print $go->usage if MyModule::some_error_condition($opts);
 
-running the command './foobar.pl -x' results in the following output:
+using (2), running the command './foobar.pl -x' results in the
+following output:
 
     Unknown option: x
     foobar program v1.0
     usage: foobar.pl [options]
     options
     -h, --help      This help message
-        --man       Display documentation
     -v, --verbose   Verbose mode
     -n, --test      Test mode
     -d, --debug     Debug mode
     -w, --wibble    Specify a wibble parameter
     -f, --foobar    Apply foobar algorithm
     -j, --joobies   Jooby integer list
+        --man       Display documentation
 
 =head1 DESCRIPTION
 
 This is yet another Getopt related module.  Getopt::Compact is geared
 towards compactly and yet quite powerfully describing an option
 syntax.  Options can be parsed, returned as a hashref of values,
-and/or displayed as a usage string.  Options can also be retrieved in a
-single statement by instantiating a Getopt::Compact object and calling
-the opts() method (see SYNOPSIS).
+and/or displayed as a usage string or within the script POD.
 
 =head1 PUBLIC METHODS
 
@@ -260,7 +273,7 @@ printed as part of the usage string.
 =item C<version>
 
 Program version.  Can be an RCS Version string, or any other string.
-Displayed in usage information.
+Displayed in usage information.  The default is ($main::VERSION || '1.0')
 
 =item C<usage>
 
@@ -273,12 +286,12 @@ when there are parse errors or the --help option is given.
 A string describing mandatory arguments to display in the usage string.
 eg: 
 
-print new Getopt::Compact
-    (args => 'foo', cmd => 'bar.pl)->usage;
+    print new Getopt::Compact
+        (args => 'foo', cmd => 'bar.pl')->usage;
 
 displays:
 
-usage: bar.pl [options] foo
+    usage: bar.pl [options] foo
 
 =item C<modes>
 
@@ -286,6 +299,7 @@ This is a shortcut for defining boolean mode options, such as verbose
 and test modes.  Set it to an arrayref of mode names, eg
 [qw(verbose test)].  The following statements are equivalent:
 
+    # longhand version
     my $go = new Getopt::Compact
         (struct => [[[qw(v verbose)], qw(verbose mode)],
                     [[qw(n test)],    qw(test mode)],
@@ -295,6 +309,7 @@ and test modes.  Set it to an arrayref of mode names, eg
 
 and
 
+    # shorthand version
     my $go = new Getopt::Compact
         (modes => [qw(verbose test debug)],
          struct => [[[qw(f foobar)], qq(activate foobar)]]);
@@ -304,22 +319,22 @@ option.
 
 =item C<struct>
 
-This is where most of the option configuration is done.  The format for
-a struct option is an arrayref of arrayrefs in the following form
-([] denotes an arrayref):
+This is where most of the option configuration is done.  The format
+for a struct option is an arrayref of arrayrefs (see C<SYNOPSIS>) in
+the following form (where [ ] denotes an array reference):
 
-struct => [arrayref, arrayref]
+    struct => [optarray, optarray, ...]
 
-arrayref is of the form (only 'name specification' is required):
+and each optarray is an array reference in the following form:
+(only 'name specification' is required)
 
-[name specification, description, argument specification, destination]
+    [name spec, description, argument spec, destination]
 
 name specification may be a scalar string, eg "length", or a reference
-to an array of alternate option names, eg [qw(l length)].  If an array
-of alternate names is used, the key to the option value as returned by the
-C<opts()> method is the first long option (longer than one character)
-or the first character if all names are single characters.  ie.  [qw(l
-length height)] will use "length" as the option key.
+to an array of alternate option names, eg [qw(l length)].  The option
+name specification is also used to determine the key to the option
+value in the hashref returned by C<opts()>.  See C<opts()> for more
+information.
 
 The argument specification is passed directly to Getopt::Long, so any
 syntax recognised by Getopt::Long should also work here.  Some argument
@@ -377,18 +392,25 @@ The following options may be automatically added by Getopt::Compact:
 
 =item "This help message" (-h or --help)
 
-A help option is automatically prepended to the list of available options if the C<usage> constructor option is true (this is enabled by default).
+A help option is automatically prepended to the list of available
+options if the C<usage> constructor option is true (this is enabled by
+default).  When invoked with -h or --help, Getopt::Compact
+automatically displays the usage string and exits.
 
 =item "Display documentation" (--man)
 
-This option is prepended to the list of available options unless an
-alternative --man option has been defined.
+This option is appended to the list of available options unless an
+alternative --man option has been defined.  When invoked with --man,
+Getopt::Compact prints a modified version of its POD to stdout and
+exits.
 
 =back
 
 =item $go->pod2usage()
 
-Displays the POD as a manpage.  The POD will be altered to include a C<USAGE> section containing the usage information, unless a C<USAGE> section already exists.  This is invoked automatically by the --man option.
+Displays the POD for the script.  The POD will be altered to include
+C<USAGE>, C<NAME> and C<VERSION> sections unless they already exist.
+This is invoked automatically when the --man option is given.
 
 =item $go->status()
 
@@ -407,11 +429,30 @@ constructor usage option is true (on by default), then a usage string
 will be printed and the program will exit if it encounters an
 unrecognised option or the -h or --help option is given.
 
+The key in %$opt for each option is determined by the option names
+in the specification used in the C<struct> definition.  For example:
+
+=over 4
+
+=item ["foo", qw(foo option)]
+
+The key will be "foo".
+
+=item [[qw(f foo)], qw(foo option)]
+
+=item [[qw(f foo foobar)], qw(foo option)]
+
+In both cases the key will be "foo".  If multiple option names are
+given, the first long option name (longer than one character) will be
+used as the key.
+
+=item [[qw(a b)], qq(a or b option)]
+
+The key here will be "a".  If all alternatives are one character, the first option name in the list is used as the key
+
 =back
 
-=head1 VERSION
-
-$Revision: 4 $
+=back
 
 =head1 AUTHOR
 
